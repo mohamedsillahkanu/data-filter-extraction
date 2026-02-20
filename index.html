@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ICF-SL Data Filter & Extract Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{padding:20px;background:#f0f4f8;font-family:'Oswald',Arial,sans-serif;color:#000;font-weight:500;}
+.wrap{max-width:1500px;margin:0 auto;}
+
+.page-header{background:#004080;color:#fff;padding:25px 30px;text-align:center;border-radius:8px 8px 0 0;}
+.logo-row{display:flex;justify-content:center;margin-bottom:15px;}
+.logo-box{background:#fff;border-radius:8px;padding:10px;}
+.logo-box img{width:90px;height:auto;border-radius:6px;}
+.page-header h3{font-size:13px;font-weight:700;letter-spacing:1px;margin:10px 0 4px;}
+.page-header .tagline{font-size:10px;font-style:italic;}
+.page-header h1{margin:18px 0 8px;font-size:24px;font-weight:700;letter-spacing:1px;}
+.page-header .subtitle{font-size:13px;}
+
+.roadmap-bar{background:#fff;border:4px double #004080;border-top:none;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.roadmap-step{display:flex;align-items:center;gap:8px;font-size:12px;color:#999;}
+.roadmap-step.active{color:#004080;font-weight:700;}
+.roadmap-step.completed{color:#28a745;}
+.step-num{width:30px;height:30px;border-radius:50%;background:#e0e0e0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#333;}
+.roadmap-step.active .step-num{background:#004080;color:#fff;}
+.roadmap-step.completed .step-num{background:#28a745;color:#fff;}
+.step-connector{width:35px;height:3px;background:#e0e0e0;}
+.step-connector.completed{background:#28a745;}
+
+.content-card{border:4px double #004080;border-top:none;border-radius:0 0 12px 12px;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,.1);margin-bottom:20px;}
+.section{padding:25px 28px;border-bottom:2px dashed #c0d4ec;}
+.section:last-child{border-bottom:none;}
+.section-header{background:#004080;color:#fff;padding:12px 20px;margin:-25px -28px 20px;display:flex;align-items:center;gap:12px;}
+.section-icon{background:#fff;color:#004080;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;}
+.section-title{font-size:16px;font-weight:700;}
+
+/* Upload */
+.upload-box{background:#f8f9fa;padding:2.5rem;border-radius:8px;border:3px dashed #004080;text-align:center;cursor:pointer;transition:all .3s;}
+.upload-box:hover,.upload-box.drag{background:#e7f3ff;border-color:#0056b3;}
+.upload-box.loaded{border-style:solid;border-color:#28a745;background:#d4edda;}
+.upload-box h4{color:#004080;margin-bottom:6px;font-size:17px;}
+.upload-box p{font-size:12px;color:#666;margin-top:5px;}
+.upload-box input{display:none;}
+.upload-icon{font-size:42px;margin-bottom:8px;}
+
+/* Buttons */
+.btn{padding:10px 18px;border:2px solid #004080;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer;text-transform:uppercase;font-family:'Oswald',Arial,sans-serif;transition:all .2s;margin:3px;display:inline-flex;align-items:center;gap:7px;}
+.btn-primary{background:#004080;color:#fff;}.btn-primary:hover{background:#0056b3;}
+.btn-secondary{background:#fff;color:#004080;}.btn-secondary:hover{background:#004080;color:#fff;}
+.btn-success{background:#28a745;color:#fff;border-color:#28a745;}.btn-success:hover{background:#218838;}
+.btn-warning{background:#ffc107;color:#000;border-color:#ffc107;}
+.btn-info{background:#17a2b8;color:#fff;border-color:#17a2b8;}
+.btn-lg{padding:13px 26px;font-size:14px;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.button-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;}
+
+/* Alerts */
+.alert{padding:.9rem 1rem;border-radius:6px;margin:.8rem 0;font-weight:500;font-size:13px;display:flex;align-items:flex-start;gap:10px;}
+.alert-info{background:#e7f3ff;border:2px solid #004080;color:#004080;}
+.alert-success{background:#d4edda;border:2px solid #28a745;color:#155724;}
+.alert-warning{background:#fff3cd;border:2px solid #ffc107;color:#856404;}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:14px 0;}
+.stat-box{background:#fff;border:3px solid #004080;border-radius:8px;padding:14px;text-align:center;}
+.stat-box .val{font-size:1.7rem;font-weight:700;color:#004080;}
+.stat-box .lbl{font-size:11px;color:#666;margin-top:4px;}
+.stat-box.green{border-color:#28a745;}.stat-box.green .val{color:#28a745;}
+.stat-box.teal{border-color:#17a2b8;}.stat-box.teal .val{color:#17a2b8;}
+.stat-box.gold{border-color:#ffc107;}.stat-box.gold .val{color:#856404;}
+.stat-box.red{border-color:#dc3545;}.stat-box.red .val{color:#dc3545;}
+
+/* Filter panels */
+.filter-panels{display:flex;flex-direction:column;gap:16px;margin-top:12px;}
+.filter-panel{background:#f8f9fa;border:2px solid #dee2e6;border-radius:10px;overflow:hidden;transition:border-color .2s;}
+.filter-panel.active{border-color:#004080;}
+.fp-head{display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;user-select:none;}
+.fp-head:hover{background:#e7f3ff;}
+.fp-toggle{width:22px;height:22px;border-radius:50%;background:#e0e0e0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;transition:all .2s;}
+.filter-panel.active .fp-toggle{background:#004080;color:#fff;}
+.fp-col{font-size:13px;font-weight:700;flex:1;}
+.fp-badge{font-size:11px;padding:3px 10px;border-radius:12px;background:#e9ecef;color:#555;}
+.filter-panel.active .fp-badge{background:#004080;color:#fff;}
+.fp-body{padding:14px 16px;border-top:2px solid #dee2e6;display:none;}
+.filter-panel.active .fp-body{display:block;}
+
+/* Value checkboxes grid */
+.val-search{width:100%;padding:8px 12px;border:2px solid #004080;border-radius:6px;font-size:12px;font-family:'Oswald',Arial,sans-serif;margin-bottom:10px;}
+.val-search:focus{outline:none;}
+.val-grid{display:flex;flex-wrap:wrap;gap:7px;max-height:200px;overflow-y:auto;padding:4px 2px;}
+.val-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:16px;font-size:12px;font-weight:700;cursor:pointer;border:2px solid #dee2e6;background:#fff;transition:all .2s;user-select:none;}
+.val-chip:hover{border-color:#004080;background:#e7f3ff;}
+.val-chip.sel{border-color:#004080;background:#004080;color:#fff;}
+.val-chip input{display:none;}
+.val-actions{display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;}
+
+/* Active filters summary */
+.active-filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.af-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:14px;background:#004080;color:#fff;font-size:11px;font-weight:700;}
+.af-chip .af-x{cursor:pointer;opacity:.7;font-size:14px;}.af-chip .af-x:hover{opacity:1;}
+
+/* Table */
+.table-wrapper{overflow:auto;border:2px solid #004080;border-radius:8px;margin-top:12px;max-height:480px;}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;}
+.data-table th{background:#004080;color:#fff;font-weight:700;padding:10px 13px;text-align:left;position:sticky;top:0;z-index:10;white-space:nowrap;cursor:pointer;}
+.data-table th:hover{background:#0056b3;}
+.data-table td{padding:8px 13px;border-bottom:1px solid #ddd;white-space:nowrap;}
+.data-table tr:hover{background:#e7f3ff;}
+.data-table tr:nth-child(even){background:#f8f9fa;}
+.data-table tr:nth-child(even):hover{background:#e7f3ff;}
+.sarr{font-size:10px;margin-left:3px;}
+
+/* Column selector */
+.col-toggle-grid{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px;}
+.ctog{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:14px;font-size:11px;font-weight:700;cursor:pointer;border:2px solid #dee2e6;background:#fff;transition:all .2s;user-select:none;}
+.ctog:hover{border-color:#004080;}
+.ctog.on{border-color:#28a745;background:#28a745;color:#fff;}
+
+.page-footer{background:#004080;color:#fff;padding:18px 30px;text-align:center;font-size:13px;border-radius:8px;margin-top:16px;}
+.page-footer p{font-size:11px;margin-top:4px;opacity:.85;}
+.toast{position:fixed;bottom:26px;right:26px;background:#004080;color:#fff;padding:13px 22px;border-radius:8px;font-size:13px;font-weight:700;box-shadow:0 4px 16px rgba(0,0,0,.3);z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+.toast.show{opacity:1;}
+.hidden{display:none!important;}
+
+.search-global{width:100%;padding:10px 14px;border:2px solid #004080;border-radius:6px;font-size:13px;font-family:'Oswald',Arial,sans-serif;margin-bottom:12px;}
+.search-global:focus{outline:none;box-shadow:0 0 0 3px rgba(0,64,128,.2);}
+</style>
+</head>
+<body>
+<div class="toast" id="toast"></div>
+<div class="wrap">
+
+<div class="page-header">
+  <div class="logo-row"><div class="logo-box">
+    <img src="https://github.com/mohamedsillahkanu/gdp-dashboard-2/raw/6c7463b0d5c3be150aafae695a4bcbbd8aeb1499/ICF-SL.jpg" alt="ICF-SL" onerror="this.style.display='none'">
+  </div></div>
+  <h3>Informatics Consultancy Firm-Sierra Leone (ICF-SL)</h3>
+  <p class="tagline">Driving Data-Driven Solutions for Health and Development</p>
+  <h1>DATA FILTER & EXTRACT TOOL</h1>
+  <p class="subtitle">Upload · Filter by Any Column (District, Year, Facility…) · Preview · Download</p>
+</div>
+
+<div class="roadmap-bar">
+  <div class="roadmap-step active" id="step1"><div class="step-num">1</div><span>Upload File</span></div>
+  <div class="step-connector" id="conn1"></div>
+  <div class="roadmap-step" id="step2"><div class="step-num">2</div><span>Set Filters</span></div>
+  <div class="step-connector" id="conn2"></div>
+  <div class="roadmap-step" id="step3"><div class="step-num">3</div><span>Preview</span></div>
+  <div class="step-connector" id="conn3"></div>
+  <div class="roadmap-step" id="step4"><div class="step-num">4</div><span>Download</span></div>
+</div>
+
+<div class="content-card">
+
+  <!-- S1: UPLOAD -->
+  <div class="section" id="sec1">
+    <div class="section-header"><span class="section-icon">1</span><span class="section-title">UPLOAD YOUR DATA FILE</span></div>
+    <label for="fileInput">
+      <div class="upload-box" id="uploadBox"
+        ondragover="event.preventDefault();this.classList.add('drag')"
+        ondragleave="this.classList.remove('drag')"
+        ondrop="this.classList.remove('drag');handleFile(event.dataTransfer.files[0]);event.preventDefault()">
+        <div class="upload-icon">📂</div>
+        <h4>Click to browse or drag & drop</h4>
+        <p>Supported: <strong>CSV, Excel (.xlsx / .xls)</strong></p>
+        <p id="uploadStatus" style="margin-top:12px;font-weight:700;color:#28a745;font-size:14px;"></p>
+      </div>
+      <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" onchange="handleFile(this.files[0])">
+    </label>
+    <div id="a1"></div>
+  </div>
+
+  <!-- S2: FILTERS -->
+  <div class="section hidden" id="sec2">
+    <div class="section-header"><span class="section-icon">2</span><span class="section-title">SET YOUR FILTERS</span></div>
+
+    <div class="stats-row" id="fileStats"></div>
+
+    <div class="alert alert-info">
+      ℹ️ Click any column below to expand it and select which values to keep. You can filter by <strong>multiple columns at once</strong> (e.g. District AND Year). Only rows matching ALL selected filters will be extracted.
+    </div>
+
+    <!-- Active filter summary -->
+    <div id="activeFilterWrap" class="hidden">
+      <label style="font-size:12px;font-weight:700;color:#004080;display:block;margin-bottom:6px;">🔵 ACTIVE FILTERS:</label>
+      <div class="active-filters" id="activeFilters"></div>
+    </div>
+
+    <div class="filter-panels" id="filterPanels"></div>
+
+    <div id="a2"></div>
+    <div class="button-group">
+      <button class="btn btn-success btn-lg" onclick="applyFilters()">👁 Preview Filtered Data</button>
+      <button class="btn btn-warning" onclick="clearAllFilters()">✕ Clear All Filters</button>
+      <button class="btn btn-secondary" onclick="resetAll()">↩ Upload Different File</button>
+    </div>
+  </div>
+
+  <!-- S3: PREVIEW & DOWNLOAD -->
+  <div class="section hidden" id="sec3">
+    <div class="section-header"><span class="section-icon">3</span><span class="section-title">PREVIEW & DOWNLOAD FILTERED DATA</span></div>
+
+    <div class="stats-row" id="rStats"></div>
+
+    <!-- Column visibility -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:#004080;display:block;margin-bottom:6px;">👁 VISIBLE COLUMNS (click to show/hide in preview):</label>
+      <div class="button-group" style="margin-top:0;margin-bottom:6px;">
+        <button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="toggleAllCols(true)">Show All</button>
+        <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="toggleAllCols(false)">Hide All</button>
+      </div>
+      <div class="col-toggle-grid" id="colToggles"></div>
+    </div>
+
+    <!-- Global search on result -->
+    <input type="text" class="search-global" id="resultSearch" placeholder="🔍 Search within filtered results…" oninput="renderTable()">
+
+    <div class="table-wrapper">
+      <table class="data-table">
+        <thead id="rHead"></thead>
+        <tbody id="rBody"></tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:#666;margin-top:8px;" id="rCount"></p>
+
+    <div class="button-group">
+      <button class="btn btn-success btn-lg" onclick="exportXLSX()">⬇ Download Excel (.xlsx)</button>
+      <button class="btn btn-primary" onclick="exportCSV()">⬇ Download CSV</button>
+      <button class="btn btn-info" onclick="exportPerValue()">⬇ Download Separate Files (one per filter value)</button>
+      <button class="btn btn-warning" onclick="goBack()">← Edit Filters</button>
+      <button class="btn btn-secondary" onclick="resetAll()">🔄 Start Over</button>
+    </div>
+    <p style="font-size:11px;color:#888;margin-top:6px;">💡 <em>"Download Separate Files"</em> creates one Excel file per unique value of your first active filter (e.g. one file per District).</p>
+  </div>
+
+</div>
+
+<div class="page-footer">
+  <strong>ICF-SL Data Filter & Extract Tool</strong>
+  <p>Filter by any combination of columns · Preview instantly · Download as Excel or CSV</p>
+</div>
+</div>
+
+<script>
+let rawData=[],headers=[],fileName='';
+let filters={};       // {colName: Set of selected values}
+let filteredData=[];
+let visibleCols=new Set();
+let sortCol='',sortDir='asc';
+
+function toast(m,d=2800){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),d);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function show(id){document.getElementById(id).classList.remove('hidden');}
+function hide(id){document.getElementById(id).classList.add('hidden');}
+function sc(id){setTimeout(()=>document.getElementById(id).scrollIntoView({behavior:'smooth',block:'start'}),80);}
+function setRm(a){for(let i=1;i<=4;i++){const s=document.getElementById('step'+i),c=document.getElementById('conn'+i);s.className='roadmap-step'+(i<a?' completed':i===a?' active':'');s.querySelector('.step-num').style.background=i<a?'#28a745':i===a?'#004080':'#e0e0e0';s.querySelector('.step-num').style.color=i<=a?'#fff':'#333';if(c)c.className='step-connector'+(i<a?' completed':'');}}
+
+/* FILE */
+function handleFile(file){
+  if(!file)return;
+  fileName=file.name;
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(!['csv','xlsx','xls'].includes(ext)){showA('a1','❌ Upload CSV or Excel only.','warning');return;}
+
+  // Show spinner IMMEDIATELY before any processing
+  const box=document.getElementById('uploadBox');
+  box.querySelector('h4').textContent='⏳ Loading…';
+  box.querySelector('h4').style.color='#ffc107';
+  document.getElementById('uploadStatus').textContent=`📂 Reading ${file.name} (${(file.size/1024/1024).toFixed(1)} MB)…`;
+
+  // Let the browser paint the spinner, THEN start heavy work
+  setTimeout(()=>{
+    const r=new FileReader();
+    if(ext==='csv'){
+      r.onload=e=>{
+        Papa.parse(e.target.result,{
+          header:true,
+          skipEmptyLines:true,
+          dynamicTyping:false,
+          worker:false,   // PapaParse worker mode can add overhead for moderate files
+          complete(results){rawData=results.data;headers=results.meta.fields;afterParse();}
+        });
+      };
+      r.readAsText(file);
+    } else {
+      r.onload=e=>{
+        // Use cellDates:false and dense mode for speed
+        const wb=XLSX.read(new Uint8Array(e.target.result),{
+          type:'array',
+          cellDates:false,
+          cellNF:false,
+          cellStyles:false,
+          sheetStubs:false
+        });
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        rawData=XLSX.utils.sheet_to_json(ws,{defval:'',raw:true});
+        headers=Object.keys(rawData[0]||{});
+        afterParse();
+      };
+      r.readAsArrayBuffer(file);
+    }
+  }, 30); // 30ms is enough for browser to repaint
+}
+function showA(id,msg,type='info'){document.getElementById(id).innerHTML=msg?`<div class="alert alert-${type}">${msg}</div>`:'';  }
+
+function afterParse(){
+  if(!rawData.length){showA('a1','❌ File is empty.','warning');return;}
+  filters={};visibleCols=new Set(headers);
+  const box=document.getElementById('uploadBox');
+  box.classList.add('loaded');
+  const h4=box.querySelector('h4');h4.textContent='✅ File loaded!';h4.style.color='';
+  document.getElementById('uploadStatus').textContent=`📄 ${fileName} — ${rawData.length.toLocaleString()} rows · ${headers.length} columns`;
+  document.getElementById('fileStats').innerHTML=`
+    <div class="stat-box"><div class="val">${rawData.length.toLocaleString()}</div><div class="lbl">Total Rows</div></div>
+    <div class="stat-box green"><div class="val">${headers.length}</div><div class="lbl">Columns</div></div>
+    <div class="stat-box teal"><div class="val">${getUniqueCount()}</div><div class="lbl">Unique Values (all cols)</div></div>
+  `;
+  buildFilterPanels();
+  show('sec2');setRm(2);sc('sec2');
+  toast('✅ File loaded! Set your filters below.');
+}
+
+function getUniqueCount(){
+  return headers.reduce((s,h)=>s+new Set(rawData.map(r=>String(r[h]??''))).size,0);
+}
+
+/* BUILD FILTER PANELS */
+function buildFilterPanels(){
+  const container=document.getElementById('filterPanels');
+  container.innerHTML='';
+  headers.forEach(col=>{
+    const uniqueVals=[...new Set(rawData.map(r=>String(r[col]??'')))].sort((a,b)=>{
+      const na=parseFloat(a),nb=parseFloat(b);
+      return (!isNaN(na)&&!isNaN(nb))?na-nb:a.localeCompare(b);
+    });
+    const panel=document.createElement('div');
+    panel.className='filter-panel';panel.id='fp_'+col;
+
+    const selCount=filters[col]?filters[col].size:0;
+    panel.innerHTML=`
+      <div class="fp-head" onclick="togglePanel('${col.replace(/'/g,"\\'")}')">
+        <span class="fp-toggle" id="fpt_${esc(col)}">▶</span>
+        <span class="fp-col">📋 ${esc(col)}</span>
+        <span class="fp-badge" id="fpb_${esc(col)}">${uniqueVals.length} unique values${selCount>0?' · '+selCount+' selected':''}</span>
+      </div>
+      <div class="fp-body" id="fpbody_${esc(col)}">
+        <div class="val-actions">
+          <button class="btn btn-primary" style="padding:5px 10px;font-size:11px;" onclick="selVals('${col.replace(/'/g,"\\'")}',true)">✔ Select All</button>
+          <button class="btn btn-secondary" style="padding:5px 10px;font-size:11px;" onclick="selVals('${col.replace(/'/g,"\\'")}',false)">✕ Deselect All</button>
+          <button class="btn btn-warning" style="padding:5px 10px;font-size:11px;" onclick="clearColFilter('${col.replace(/'/g,"\\'")}')">🗑 Clear Filter</button>
+          <span id="vcnt_${esc(col)}" style="font-size:12px;color:#004080;font-weight:700;margin-left:6px;"></span>
+        </div>
+        <input type="text" class="val-search" placeholder="Search values…" oninput="searchVals('${col.replace(/'/g,"\\'")}',this.value)" id="vsearch_${esc(col)}">
+        <div class="val-grid" id="vgrid_${esc(col)}"></div>
+      </div>
+    `;
+    container.appendChild(panel);
+    renderValGrid(col,uniqueVals);
+  });
+}
+
+function togglePanel(col){
+  const panel=document.getElementById('fp_'+col);
+  const body=document.getElementById('fpbody_'+col);
+  const tog=document.getElementById('fpt_'+col);
+  const isOpen=body.style.display==='block';
+  body.style.display=isOpen?'none':'block';
+  tog.textContent=isOpen?'▶':'▼';
+  panel.classList.toggle('active',!isOpen);
+}
+
+function renderValGrid(col,vals){
+  const grid=document.getElementById('vgrid_'+col);
+  if(!grid)return;
+  const sel=filters[col]||new Set();
+  grid.innerHTML='';
+  vals.forEach(v=>{
+    const count=rawData.filter(r=>String(r[col]??'')===v).length;
+    const chip=document.createElement('div');
+    chip.className='val-chip'+(sel.has(v)?' sel':'');
+    chip.dataset.val=v;
+    chip.innerHTML=`${esc(v)} <span style="opacity:.6;font-size:10px;">(${count.toLocaleString()})</span>`;
+    chip.onclick=()=>toggleVal(col,v,chip);
+    grid.appendChild(chip);
+  });
+  updateColBadge(col);
+}
+
+function toggleVal(col,val,chip){
+  if(!filters[col])filters[col]=new Set();
+  if(filters[col].has(val))filters[col].delete(val);
+  else filters[col].add(val);
+  if(filters[col].size===0)delete filters[col];
+  chip.classList.toggle('sel',filters[col]&&filters[col].has(val));
+  updateColBadge(col);
+  updateActiveFilterSummary();
+}
+
+function selVals(col,selectAll){
+  const grid=document.getElementById('vgrid_'+col);
+  const chips=grid.querySelectorAll('.val-chip');
+  if(!filters[col])filters[col]=new Set();
+  if(!selectAll){delete filters[col];chips.forEach(c=>c.classList.remove('sel'));}
+  else{chips.forEach(c=>{filters[col].add(c.dataset.val);c.classList.add('sel');});}
+  updateColBadge(col);updateActiveFilterSummary();
+}
+
+function clearColFilter(col){
+  delete filters[col];
+  const grid=document.getElementById('vgrid_'+col);
+  if(grid)grid.querySelectorAll('.val-chip').forEach(c=>c.classList.remove('sel'));
+  updateColBadge(col);updateActiveFilterSummary();
+}
+
+function searchVals(col,term){
+  const grid=document.getElementById('vgrid_'+col);
+  if(!grid)return;
+  grid.querySelectorAll('.val-chip').forEach(c=>{
+    c.style.display=c.dataset.val.toLowerCase().includes(term.toLowerCase())?'':'none';
+  });
+}
+
+function updateColBadge(col){
+  const badge=document.getElementById('fpb_'+col);
+  const cnt=document.getElementById('vcnt_'+col);
+  const sel=filters[col]?filters[col].size:0;
+  const unique=[...new Set(rawData.map(r=>String(r[col]??'')))].length;
+  if(badge)badge.textContent=`${unique} unique${sel>0?' · '+sel+' selected':''}`;
+  if(cnt)cnt.textContent=sel>0?`${sel} selected`:'';
+  const panel=document.getElementById('fp_'+col);
+  if(panel)panel.classList.toggle('active',document.getElementById('fpbody_'+col)?.style.display==='block');
+}
+
+function updateActiveFilterSummary(){
+  const wrap=document.getElementById('activeFilterWrap');
+  const container=document.getElementById('activeFilters');
+  const activeFilters=Object.entries(filters).filter(([,v])=>v&&v.size>0);
+  if(!activeFilters.length){hide('activeFilterWrap');return;}
+  show('activeFilterWrap');
+  container.innerHTML=activeFilters.map(([col,vals])=>`
+    <div class="af-chip">
+      ${esc(col)}: ${[...vals].slice(0,3).map(v=>esc(v)).join(', ')}${vals.size>3?` +${vals.size-3} more`:''}
+      <span class="af-x" onclick="clearColFilter('${col.replace(/'/g,"\\'")}')">✕</span>
+    </div>
+  `).join('');
+}
+
+function clearAllFilters(){
+  headers.forEach(h=>{delete filters[h];});
+  buildFilterPanels();
+  hide('activeFilterWrap');
+  toast('✅ All filters cleared.');
+}
+
+/* APPLY FILTERS */
+function applyFilters(){
+  const activeFilters=Object.entries(filters).filter(([,v])=>v&&v.size>0);
+
+  filteredData=rawData.filter(row=>{
+    return activeFilters.every(([col,vals])=>vals.has(String(row[col]??'')));
+  });
+
+  if(!filteredData.length){
+    showA('a2','⚠️ No rows match the selected filters. Try selecting more values.','warning');
+    return;
+  }
+  showA('a2','');
+
+  // Build stats
+  const activeNames=activeFilters.map(([col,vals])=>`<strong>${esc(col)}</strong> (${vals.size} value${vals.size>1?'s':''})`).join(' + ');
+  document.getElementById('rStats').innerHTML=`
+    <div class="stat-box"><div class="val">${rawData.length.toLocaleString()}</div><div class="lbl">Original Rows</div></div>
+    <div class="stat-box green"><div class="val">${filteredData.length.toLocaleString()}</div><div class="lbl">Filtered Rows</div></div>
+    <div class="stat-box red"><div class="val">${(rawData.length-filteredData.length).toLocaleString()}</div><div class="lbl">Rows Excluded</div></div>
+    <div class="stat-box teal"><div class="val">${Math.round(filteredData.length/rawData.length*100)}%</div><div class="lbl">Data Kept</div></div>
+    <div class="stat-box gold"><div class="val">${activeFilters.length}</div><div class="lbl">Active Filter${activeFilters.length>1?'s':''}</div></div>
+  `;
+
+  visibleCols=new Set(headers);
+  buildColToggles();
+  sortCol='';sortDir='asc';
+  buildResultHead();
+  renderTable();
+  show('sec3');setRm(3);sc('sec3');
+  toast(`✅ ${filteredData.length.toLocaleString()} rows extracted!`);
+}
+
+/* COLUMN TOGGLES */
+function buildColToggles(){
+  const grid=document.getElementById('colToggles');
+  grid.innerHTML=headers.map(h=>`
+    <div class="ctog ${visibleCols.has(h)?'on':''}" id="ctog_${esc(h)}" onclick="toggleCol('${h.replace(/'/g,"\\'")}')">
+      ${esc(h)}
+    </div>
+  `).join('');
+}
+
+function toggleCol(col){
+  if(visibleCols.has(col))visibleCols.delete(col);else visibleCols.add(col);
+  document.getElementById('ctog_'+col)?.classList.toggle('on',visibleCols.has(col));
+  buildResultHead();renderTable();
+}
+
+function toggleAllCols(val){
+  headers.forEach(h=>{if(val)visibleCols.add(h);else visibleCols.delete(h);});
+  buildColToggles();buildResultHead();renderTable();
+}
+
+/* TABLE */
+function buildResultHead(){
+  const visCols=headers.filter(h=>visibleCols.has(h));
+  document.getElementById('rHead').innerHTML=`<tr>
+    ${visCols.map(h=>`<th onclick="srt('${h.replace(/'/g,"\\'")}')"> ${esc(h)}<span class="sarr" id="sar_${esc(h)}"></span></th>`).join('')}
+  </tr>`;
+  updArr();
+}
+
+function srt(col){
+  if(sortCol===col)sortDir=sortDir==='asc'?'desc':'asc';
+  else{sortCol=col;sortDir='asc';}
+  updArr();renderTable();
+}
+
+function updArr(){
+  document.querySelectorAll('.sarr').forEach(a=>a.textContent='');
+  const e=document.getElementById('sar_'+sortCol);
+  if(e)e.textContent=sortDir==='asc'?' ↑':' ↓';
+}
+
+function renderTable(){
+  const search=(document.getElementById('resultSearch')?.value||'').toLowerCase();
+  const visCols=headers.filter(h=>visibleCols.has(h));
+  let rows=[...filteredData];
+
+  if(search){
+    rows=rows.filter(r=>visCols.some(h=>String(r[h]??'').toLowerCase().includes(search)));
+  }
+
+  if(sortCol&&visibleCols.has(sortCol)){
+    rows.sort((a,b)=>{
+      const av=String(a[sortCol]??''),bv=String(b[sortCol]??'');
+      const an=parseFloat(av),bn=parseFloat(bv);
+      if(!isNaN(an)&&!isNaN(bn))return sortDir==='asc'?an-bn:bn-an;
+      return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av);
+    });
+  }
+
+  document.getElementById('rBody').innerHTML=rows.slice(0,5000).map(r=>`<tr>
+    ${visCols.map(h=>`<td>${esc(String(r[h]??''))}</td>`).join('')}
+  </tr>`).join('');
+
+  document.getElementById('rCount').textContent=
+    `Showing ${Math.min(rows.length,5000).toLocaleString()} of ${rows.length.toLocaleString()} filtered rows · Total in dataset: ${rawData.length.toLocaleString()}`;
+}
+
+/* EXPORT */
+function getExportData(){return filteredData.map(r=>{const o={};headers.forEach(h=>{if(visibleCols.has(h))o[h]=r[h]??'';});return o;});}
+
+function exportCSV(){
+  const d=getExportData();if(!d.length){toast('⚠️ No data.');return;}
+  const c=Object.keys(d[0]);
+  dl(new Blob([[c.join(','),...d.map(r=>c.map(k=>`"${String(r[k]??'').replace(/"/g,'""')}"`).join(','))].join('\n')],{type:'text/csv;charset=utf-8;'}),base()+'.csv');
+  toast('✅ CSV downloaded!');
+}
+
+function exportXLSX(){
+  const d=getExportData();if(!d.length){toast('⚠️ No data.');return;}
+  const ws=XLSX.utils.json_to_sheet(d,{header:Object.keys(d[0])});
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Filtered Data');
+  XLSX.writeFile(wb,base()+'.xlsx');
+  toast('✅ Excel downloaded!');
+}
+
+function exportPerValue(){
+  // Get first active filter col
+  const activeFilters=Object.entries(filters).filter(([,v])=>v&&v.size>0);
+  if(!activeFilters.length){toast('⚠️ No active filters.');return;}
+  const [firstCol,firstVals]=activeFilters[0];
+  const exportCols=[...headers].filter(h=>visibleCols.has(h));
+
+  [...firstVals].sort().forEach(val=>{
+    const subset=filteredData.filter(r=>String(r[firstCol]??'')===val);
+    if(!subset.length)return;
+    const data=subset.map(r=>{const o={};exportCols.forEach(h=>o[h]=r[h]??'');return o;});
+    const ws=XLSX.utils.json_to_sheet(data,{header:exportCols});
+    const wb=XLSX.utils.book_new();
+    const sheetName=(val||'Blank').substring(0,31);
+    XLSX.utils.book_append_sheet(wb,ws,sheetName);
+    const safeName=val.replace(/[/\\:*?"<>|]/g,'_')||'Blank';
+    XLSX.writeFile(wb,`${fileName.replace(/\.[^.]+$/,'')}_${firstCol}_${safeName}.xlsx`);
+  });
+  toast(`✅ ${firstVals.size} files downloaded — one per ${firstCol}!`);
+}
+
+function base(){
+  const activeKeys=Object.keys(filters).filter(k=>filters[k]&&filters[k].size>0);
+  const suffix=activeKeys.map(k=>[...filters[k]].join('-')).join('_');
+  return(fileName.replace(/\.[^.]+$/,'')||'data')+'_filtered'+(suffix?'_'+suffix.substring(0,30):'')+'_'+new Date().toISOString().slice(0,10);
+}
+
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();}
+
+/* NAV */
+function goBack(){hide('sec3');setRm(2);}
+function resetAll(){
+  rawData=[];headers=[];fileName='';filters={};filteredData=[];visibleCols=new Set();
+  ['sec2','sec3'].forEach(hide);
+  const box=document.getElementById('uploadBox');
+  box.classList.remove('loaded','drag');box.querySelector('h4').textContent='Click to browse or drag & drop';
+  document.getElementById('uploadStatus').textContent='';document.getElementById('fileInput').value='';
+  setRm(1);sc('sec1');
+}
+</script>
+</body>
+</html>
